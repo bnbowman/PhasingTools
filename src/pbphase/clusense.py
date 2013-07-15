@@ -17,7 +17,9 @@ from pbtools.pbdagcon.c_utils import get_subset_reads
 from pbtools.pbdagcon.c_utils import read_node_vector
 from pbtools.pbdagcon.c_utils import detect_missing
 
-from utils import count_fasta
+from utils import (count_fasta,
+                   read_fasta_names,
+                   write_fasta)
 
 # Default values
 MIN_GROUP = 10
@@ -25,10 +27,6 @@ THRESHOLD = 0.1
 PREFIX = 'Unknown'
 
 log = logging.getLogger()
-
-## prepare the reads
-#!blasr test_HLA_A.fa u0038.fa -bestn 1 -out tmp.sam -noSplitSubreads -sam -nproc 32
-#!cat tmp.sam | awk 'NF > 15 && length($10) > 2500 && i < 1000 {print ">"$1"\n"$10;i+=2}' > test.fa
 
 def calculate_entropy( threshold ):
     return -1 * threshold * log10(threshold) - (1-threshold) * log10(1-threshold)
@@ -219,11 +217,13 @@ def regroup(g1, g2, index):
 
 class Clusense( object ):
     
-    def __init__(self, read_file, ref_file, output_dir,
-                                            threshold=None,
-                                            entropy=None, 
-                                            prefix=None, 
-                                            min_group=None):
+    def __init__(self, read_file, 
+                       ref_file, 
+                       output_dir,
+                       threshold,
+                       entropy, 
+                       prefix, 
+                       min_group):
         log.info('Initializing Clusense')
         self.read_file = read_file
         self.ref_file = ref_file
@@ -234,12 +234,7 @@ class Clusense( object ):
         self.min_group = min_group
         # Validate and run
         self._validate_args()
-        log.debug('Running Clusense with the following settings:')
-        log.debug('\tReads: %s' % os.path.basename(self.read_file))
-        log.debug('\tReference: %s' % os.path.basename(self.ref_file))
-        log.debug('\tThreshold: %s' % self.threshold)
-        log.debug('\tEntropy: %s' % self.entropy)
-        log.debug('\tMin Size: %s' % self.min_group)
+        self.run()
 
     def _validate_args(self):
         # Check the output directory, and create it if needed
@@ -257,6 +252,13 @@ class Clusense( object ):
         if self.min_group is None:
             input_size = count_fasta(self.read_file)
             self.min_group = max(MIN_GROUP, 0.05*input_size)
+        # Log the final arguments for Debugging
+        log.debug('Running Clusense with the following settings:')
+        log.debug('\tReads: %s' % os.path.basename(self.read_file))
+        log.debug('\tReference: %s' % os.path.basename(self.ref_file))
+        log.debug('\tThreshold: %s' % self.threshold)
+        log.debug('\tEntropy: %s' % self.entropy)
+        log.debug('\tMin Size: %s' % self.min_group)
 
     def run(self):
         tmp_cns = os.path.join( self.output_dir, "tmp_cns.fa")
@@ -290,18 +292,14 @@ class Clusense( object ):
         log.info("Finished generating initial alignment graph")
 
         cns = os.path.join( self.output_dir, "group_root_cns.fa")
-        with open(cns,"w") as f:
-            print >>f, ">group_root_cns" 
-            print >>f, seq
+        write_fasta( cns, "group_root_cns", seq )
             
         score = os.path.join( self.output_dir, "group_root.score")
         with open(score,"w") as f:
             for i in range(len(seq)):
                 print >>f, i, seq[i], " ".join([str(c) for c in c_data[i]]), 1.0*c_data[i][0]/(c_data[i][3]+1)
 
-        r_ids = set()
-        for r in FastaReader( self.read_file ):
-            r_ids.add(r.name)
+        r_ids = read_fasta_names( self.read_file )
             
         level2_group = self.level2_partition(r_ids, self.read_file, self.ref_file)
         log.info("-------------------")
