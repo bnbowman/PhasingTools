@@ -17,6 +17,8 @@ from pbtools.pbdagcon.c_utils import get_subset_reads
 from pbtools.pbdagcon.c_utils import read_node_vector
 from pbtools.pbdagcon.c_utils import detect_missing
 
+from utils import count_fasta
+
 # Default values
 MIN_GROUP = 10
 THRESHOLD = 0.1
@@ -222,24 +224,24 @@ class Clusense( object ):
                                             entropy=None, 
                                             prefix=None, 
                                             min_group=None):
+        log.info('Initializing Clusense')
         self.read_file = read_file
         self.ref_file = ref_file
         self.output_dir = output_dir
-        self.threshold = threshold or THRESHOLD
+        self.threshold = threshold
         self.entropy = entropy
-        self.prefix = prefix or PREFIX
-        self.min_group = min_group or MIN_GROUP
+        self.prefix = prefix 
+        self.min_group = min_group
         # Validate and run
-        self.validate_args()
-        log.info('Initializing Clusense with:')
-        log.info('\tReads: %s' % os.path.basename(self.read_file))
-        log.info('\tReference: %s' % os.path.basename(self.ref_file))
-        log.info('\tThreshold: %s' % self.threshold)
-        log.info('\tEntropy: %s' % self.entropy)
-        log.info('\tMin Size: %s' % self.min_group)
-        self.run()
+        self._validate_args()
+        log.debug('Running Clusense with the following settings:')
+        log.debug('\tReads: %s' % os.path.basename(self.read_file))
+        log.debug('\tReference: %s' % os.path.basename(self.ref_file))
+        log.debug('\tThreshold: %s' % self.threshold)
+        log.debug('\tEntropy: %s' % self.entropy)
+        log.debug('\tMin Size: %s' % self.min_group)
 
-    def validate_args(self):
+    def _validate_args(self):
         # Check the output directory, and create it if needed
         if self.output_dir is None:
             self.output_dir = args.read_file.split('.')[0] + '_wd'
@@ -251,6 +253,10 @@ class Clusense( object ):
         # Set the entropy value based on the supplied threshold
         if self.entropy is None:
             self.entropy = calculate_entropy( self.threshold )
+        # Set the Minimum group size based on the input size
+        if self.min_group is None:
+            input_size = count_fasta(self.read_file)
+            self.min_group = max(MIN_GROUP, 0.05*input_size)
 
     def run(self):
         tmp_cns = os.path.join( self.output_dir, "tmp_cns.fa")
@@ -490,22 +496,35 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=desc)
 
     add = parser.add_argument
-    add("read_file", metavar="READS", 
+    add("read_file", 
+        metavar="READS", 
         help="Fasta-format file of sequence reads to separate")
-    add("reference", metavar="REFERENCE", 
+    add("reference", 
+        metavar="REFERENCE", 
         help="Fasta-format file of the reference sequence to use")
-    add("-o", "--output_dir", default=None, 
+    add("-o", "--output_dir",
         help="Name of the directory to output results to")
-    add("-m", "--min_group", type=int, default=MIN_GROUP,
+    add("-m", "--min_group", 
+        type=int,
         help="Minimum group size to require from each cluster ({0})".format(MIN_GROUP))
-    add("-p", "--prefix", default=PREFIX, 
+    add("-p", "--prefix", 
+        default=PREFIX, 
         help="Prefix to prepend before the name of any consensus sequence ({0})".format(PREFIX))
-    add("-t", "--threshold", type=float, default=THRESHOLD,
+    add("-t", "--threshold", 
+        type=float, 
+        default=THRESHOLD,
         help="Threhold value to use for calculating entropy cutoffs ({0})".format(THRESHOLD))
-    add("-e", "--entropy", type=float, default=None,
+    add("-e", "--entropy", 
+        type=float,
         help=argparse.SUPPRESS)
     args = parser.parse_args()
 
     logging.basicConfig( level=logging.INFO )
-    Clusense( args.read_file, args.reference, args.output_dir, 
-              args.threshold, args.entropy, args.prefix, args.min_group)
+
+    Clusense(args.read_file, 
+             args.reference, 
+             args.output_dir, 
+             args.threshold, 
+             args.entropy, 
+             args.prefix, 
+             args.min_group)
