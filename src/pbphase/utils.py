@@ -7,6 +7,7 @@ def read_fasta_names( fasta_file ):
     ids = set()
     for record in FastaReader( fasta_file ):
         ids.add( record.name )
+    return ids
 
 def write_fasta( filename, seq_name, sequence ):
     with FastaWriter( filename ) as writer:

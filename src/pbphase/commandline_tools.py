@@ -2,26 +2,10 @@ import os, logging, subprocess
 
 log = logging.getLogger()
 
-def run_blasr(query, reference, args):
-    command_args = create_blasr_command(query, reference, args)
+def run_amplicon_assembly(query, reference, args):
+    command_args = create__command(query, reference, args)
     log_command( command_args )
     execute_command( command_args )
-
-def run_muscle( args ):
-    command_args = create_muscle_command( args )
-    log_command( command_args )
-    execute_command( command_args )
-
-def create_muscle_command( args ):
-    log.info("Converting supplied arguments into a Blasr commandline")
-    command_args = ['muscle']
-    for arg, value in args.iteritems():
-        arg = '-' + str(arg)
-        if value is True:
-            command_args += [arg]
-        else:
-            command_args += [arg, str(value)]
-    return command_args
 
 def create_blasr_command(query, reference, args):
     log.info("Converting supplied arguments into a Blasr commandline")

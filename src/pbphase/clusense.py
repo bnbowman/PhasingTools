@@ -22,7 +22,9 @@ from utils import (count_fasta,
                    write_fasta)
 
 # Default values
-MIN_GROUP = 10
+MIN_GROUP = 25
+MAX_COVERAGE = 5000
+NPROC = 4
 THRESHOLD = 0.1
 PREFIX = 'Unknown'
 
@@ -221,19 +223,25 @@ class Clusense( object ):
                        ref_file, 
                        output_dir,
                        threshold,
-                       entropy, 
-                       prefix, 
-                       min_group):
+                       entropy=None, 
+                       nproc=NPROC,
+                       prefix=PREFIX, 
+                       min_group=MIN_GROUP,
+                       max_coverage=MAX_COVERAGE):
         log.info('Initializing Clusense')
         self.read_file = read_file
         self.ref_file = ref_file
         self.output_dir = output_dir
         self.threshold = threshold
         self.entropy = entropy
+        self.nproc = nproc
         self.prefix = prefix 
         self.min_group = min_group
+        self.max_coverage = max_coverage
         # Validate and run
+        print self.__dict__
         self._validate_args()
+        print self.__dict__
         self.run()
 
     def _validate_args(self):
@@ -275,7 +283,7 @@ class Clusense( object ):
                        entropy_th = 0.65,
                        min_cov = 8,
                        max_cov = 200,
-                       nproc = 16,
+                       nproc = self.nproc,
                        mark_lower_case = False,
                        use_read_id = False)
         log.info("Finished generating initial consensus")
@@ -283,10 +291,10 @@ class Clusense( object ):
         log.info("Generating initial alignment graph")
         aln_g = construct_aln_graph_from_fasta( self.read_file, 
                                                 tmp_cns, 
-                                                max_num_reads = 5000, 
-                                                max_cov=5000, 
+                                                max_num_reads = self.max_coverage, 
+                                                max_cov = self.max_coverage, 
                                                 remove_in_del = False, 
-                                                nproc=16, 
+                                                nproc = self.nproc, 
                                                 use_read_id = False)
         seq, c_data = aln_g.generate_consensus(min_cov=0, compute_qv_data= True)
         log.info("Finished generating initial alignment graph")
@@ -319,10 +327,10 @@ class Clusense( object ):
 
             aln_g = construct_aln_graph_from_fasta(out_read_file, 
                                                    cns, 
-                                                   max_num_reads = 5000, 
-                                                   max_cov=5000, 
+                                                   max_num_reads = self.max_coverage,
+                                                   max_cov = self.max_coverage, 
                                                    remove_in_del = False, 
-                                                   nproc=16, 
+                                                   nproc = self.nproc, 
                                                    use_read_id = False)
             seq, c_data = aln_g.generate_consensus(min_cov=0, compute_qv_data= True)
 
@@ -362,16 +370,16 @@ class Clusense( object ):
                        entropy_th = 0.65,
                        min_cov = 8,
                        max_cov = 200,
-                       nproc = 16,
+                       nproc = self.nproc,
                        mark_lower_case = False,
                        use_read_id = False )
             
         aln_g = construct_aln_graph_from_fasta(read_file, 
                                                 tmp_cns, 
-                                                max_num_reads = 5000, 
-                                                max_cov = 5000, 
+                                                max_num_reads = self.max_coverage, 
+                                                max_cov = self.max_coverage, 
                                                 remove_in_del = True, 
-                                                nproc=16, 
+                                                nproc = self.nproc, 
                                                 use_read_id=True)
 
         seq, c_data = aln_g.generate_consensus(min_cov=0)
@@ -502,16 +510,25 @@ if __name__ == "__main__":
         help="Fasta-format file of the reference sequence to use")
     add("-o", "--output_dir",
         help="Name of the directory to output results to")
-    add("-m", "--min_group", 
+    add("-g", "--min_group", 
         type=int,
-        help="Minimum group size to require from each cluster ({0})".format(MIN_GROUP))
+        default=MIN_GROUP,
+        help="Minimum group size to require from each cluster (%s)" % MIN_GROUP)
+    add("-m", "--max_coverage",
+        type=int,
+        default=MAX_COVERAGE,
+        help="Maximum number of reads to use (%s)" % MAX_COVERAGE)
+    add("-n", "--nproc",
+        type=int,
+        default=NPROC,
+        help="Maximum number of threads to use (%s)" % NPROC)
     add("-p", "--prefix", 
         default=PREFIX, 
-        help="Prefix to prepend before the name of any consensus sequence ({0})".format(PREFIX))
+        help="Prefix to prepend before the name of any consensus sequence (%s)" % PREFIX)
     add("-t", "--threshold", 
         type=float, 
         default=THRESHOLD,
-        help="Threhold value to use for calculating entropy cutoffs ({0})".format(THRESHOLD))
+        help="Threhold value to use for calculating entropy cutoffs (%s)" % THRESHOLD)
     add("-e", "--entropy", 
         type=float,
         help=argparse.SUPPRESS)
@@ -521,8 +538,10 @@ if __name__ == "__main__":
 
     Clusense(args.read_file, 
              args.reference, 
-             args.output_dir, 
+             args.output_dir,
              args.threshold, 
-             args.entropy, 
+             args.entropy,
+             args.nproc,
              args.prefix, 
-             args.min_group)
+             args.min_group,
+             args.max_coverage)
