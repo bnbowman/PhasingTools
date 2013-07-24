@@ -96,7 +96,7 @@ class AmpliconAssembler(object):
         self.run_process( process_args, output, 'AmpliconAssembler')
         log.info('Finished running Amplicon Assembler\n')
 
-    def create_base_command( self, input_file, output ):
+    def create_process_args( self, input_file, output ):
         """
         Create a list of args with the minimally sufficient call to AA
         """
