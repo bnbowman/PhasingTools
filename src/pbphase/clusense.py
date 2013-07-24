@@ -173,7 +173,6 @@ def col_entropy(m):
     # all_n = sp + sn + sz
     p1 = 1.0 * sp  / all_n
     p2 = 1.0 * sn  / all_n
-    print len(p1), len(p2)
     #p3 = 1.0 * sz  / all_n
     #return -p1 * np.log(p1) - p2 * np.log(p2) - p3 * log(p3)
     return -p1 * np.log(p1) - p2 * np.log(p2)
@@ -239,9 +238,7 @@ class Clusense( object ):
         self.min_group = min_group
         self.max_coverage = max_coverage
         # Validate and run
-        print self.__dict__
         self._validate_args()
-        print self.__dict__
         self.run()
 
     def _validate_args(self):
