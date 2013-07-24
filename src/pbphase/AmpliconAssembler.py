@@ -37,6 +37,12 @@ from pbphase.utils import *
 
 log = logging.getLogger()
 
+VALID_OPTIONS = ['minLength', 'minReadScore', 'whiteList', 'noClustering']
+
+MIN_READ_LENGTH = 3000
+MIN_READ_SCORE = 0.8
+NPROC = 1
+
 class AmpliconAssembler(object):
     """
     A tool for running Amplicon Assembly 
@@ -84,7 +90,7 @@ class AmpliconAssembler(object):
 
         # Create the
         process_args = self.create_process_args( self, input_file, output )
-        process_args = self.add_args( self, process_args, args )
+        process_args = self.add_optional_args( self, process_args, args )
 
         # Create and run the Amplicon Assembly process
         self.run_process( process_args, output, 'AmpliconAssembler')
@@ -109,10 +115,17 @@ class AmpliconAssembler(object):
                             '--output', output]
         return process_args
 
-    def add_args( process_args, new_args ):
+    def add_optional_args( process_args, new_args ):
         """
         Add any remaining options to the Process
         """
+        for arg, value in new_args.iteritems():
+            if arg in VALID_ARGS:
+                arg = '--' + arg
+                if value is True:
+                    process_args.append( arg )
+                else:
+                    process_args += [arg, str(value)]
         return process_args
 
     def run_process(self, process_args, folder, name):
@@ -150,8 +163,8 @@ class AmpliconAssembler(object):
 
 if __name__ == '__main__':
     import argparse
-    parser = argparse.ArgumentParser()
 
+    parser = argparse.ArgumentParser()
     add = parser.add_argument
     add('input_file', 
         metavar='FOFN', 
@@ -166,12 +179,31 @@ if __name__ == '__main__':
     add('--nproc', 
         type=int, 
         metavar='INT',
-        default=1, 
-        help="Number of processors to use")
-
+        default=NPROC, 
+        help="Number of processors to use [%s]" % NPROC)
+    add('-l', '--min_read_length',
+        type=int,
+        metavar='INT',
+        default=MIN_READ_LENGTH,
+        help="Minimum length sub-reads to allow as input [%s]" % MIN_READ_LENGTH)
+    add('-s', '--min_read_score',
+        type=float,
+        metavar='FLOAT',
+        default=MIN_READ_SCORE,
+        help="Minimim read score to allow from input ZMWs [%s]" % MIN_READ_SCORE)
+    add('--disable_clustering',
+        action='store_true',
+        help="Disable the pre-phasing coarse-clustering step")
+    add('-w', '--white_list',
+        metavar='FILE',
+        help="Text or Fasta file of white-listed reads to use")
     args = parser.parse_args()
      
     logging.basicConfig( level=logging.INFO )
 
     aa = AmpliconAssembler( args.setup, args.nproc )
-    aa.run( args.input_file, args.output )
+    process_args = {'whiteList': args.white_list,
+                    'minLength': args.min_read_length,
+                    'minReadScore': args.min_read_score,
+                    'noClustering': args.disable_clustering}
+    aa.run( args.input_file, args.output, args )

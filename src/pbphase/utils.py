@@ -1,3 +1,5 @@
+import os
+
 from pbcore.io.FastaIO import FastaReader, FastaWriter, FastaRecord
 
 def count_fasta( fasta_file ):
