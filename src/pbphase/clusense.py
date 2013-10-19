@@ -529,16 +529,25 @@ if __name__ == "__main__":
     add("-e", "--entropy", 
         type=float,
         help=argparse.SUPPRESS)
+    add("--debug",
+        action='store_true',
+        help="Enable logging of Debug messages")
     args = parser.parse_args()
 
-    logging.basicConfig( level=logging.INFO )
+    if args.debug:
+        log_level = logging.DEBUG
+    else:
+        log_level = logging.INFO
 
-    Clusense(args.read_file, 
-             args.reference, 
-             args.output_dir,
-             args.threshold, 
-             args.entropy,
-             args.nproc,
-             args.prefix, 
-             args.min_group,
-             args.max_coverage)
+    logging.basicConfig( level=log_level,
+                         stream=sys.stdout )
+
+    Clusense( args.read_file, 
+              args.reference, 
+              args.output_dir,
+              args.threshold, 
+              args.entropy,
+              args.nproc,
+              args.prefix, 
+              args.min_group,
+              args.max_coverage )
